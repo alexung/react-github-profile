@@ -1,25 +1,25 @@
 /* @jsx jsx */
-import {jsx} from '@emotion/core'
+import {jsx} from '@emotion/core';
 
-import {Component} from 'react'
-import PropTypes from 'prop-types'
-import {Container, Row, Column} from '../../shared/layout'
+import {useContext, useState} from 'react';
+import PropTypes from 'prop-types';
+import {Container, Row, Column} from '../../shared/layout';
 import {
   Text,
   PrimaryButton,
   IsolatedContainer,
   ButtonLink,
   LoadingMessagePage,
-} from '../../shared/pattern'
-import {Context as GitHubContext} from '../../github-client'
-import Query from './components/query'
-import Profile from './components/profile'
-import RepoFilter from './components/repo-filter'
-import RepoList from './components/repo-list'
-import UserContext from './user-context'
+} from '../../shared/pattern';
+import {Context as GitHubContext} from '../../github-client';
+import Query from './components/query';
+import Profile from './components/profile';
+import RepoFilter from './components/repo-filter';
+import RepoList from './components/repo-list';
+import UserContext from './user-context';
 
 // this allows prettier to format things without changing the string contents
-const gql = String.raw
+const gql = String.raw;
 
 const userQuery = gql`
   query getUserData($username: String!) {
@@ -74,7 +74,7 @@ const userQuery = gql`
       }
     }
   }
-`
+`;
 
 function normalizeUserData(data) {
   const {
@@ -87,7 +87,7 @@ function normalizeUserData(data) {
       repositories: {totalCount: repositoriesCount, edges: reposData},
       organizations: {edges: orgsData},
     },
-  } = data
+  } = data;
   const repositories = reposData.map(r => ({
     ...r.node,
     languages: undefined,
@@ -95,8 +95,8 @@ function normalizeUserData(data) {
     language: r.node.languages.edges[0]
       ? r.node.languages.edges[0].node.name
       : 'Unknown',
-  }))
-  const organizations = orgsData.map(o => o.node)
+  }));
+  const organizations = orgsData.map(o => o.node);
   return {
     name,
     login,
@@ -106,74 +106,64 @@ function normalizeUserData(data) {
     repositoriesCount,
     repositories,
     organizations,
-  }
+  };
 }
 
-class User extends Component {
-  static propTypes = {
-    username: PropTypes.string,
-  }
-  static contextType = GitHubContext
-  state = {filter: ''}
-
-  handleFilterUpdate = filter => {
-    this.setState({filter})
-  }
-
-  render() {
-    const {username} = this.props
-    const {filter} = this.state
-    return (
-      <Query
-        query={userQuery}
-        variables={{username}}
-        normalize={normalizeUserData}
-      >
-        {({fetching, data, error}) =>
-          error ? (
-            <IsolatedContainer>
-              <p>There was an error loading the data</p>
-              <pre>{JSON.stringify(error, null, 2)}</pre>
-            </IsolatedContainer>
-          ) : fetching ? (
-            <LoadingMessagePage>Loading data for {username}</LoadingMessagePage>
-          ) : data ? (
-            <UserContext.Provider value={data}>
-              <Container>
-                <Row>
-                  <Column width="3">
-                    <Profile />
-                    <PrimaryButton
-                      css={{marginTop: 20, width: '100%'}}
-                      onClick={this.context.logout}
-                    >
-                      Logout
-                    </PrimaryButton>
-                    <ButtonLink css={{marginTop: 20, width: '100%'}} to="/">
-                      Try another
-                    </ButtonLink>
-                  </Column>
-                  <Column width="9">
-                    <Text size="subheading">Repositories</Text>
-                    <RepoFilter
-                      filter={filter}
-                      onUpdate={this.handleFilterUpdate}
-                    />
-                    <RepoList filter={filter} />
-                  </Column>
-                </Row>
-              </Container>
-            </UserContext.Provider>
-          ) : (
-            <IsolatedContainer>I have no idea what's up...</IsolatedContainer>
-          )
-        }
-      </Query>
-    )
-  }
+// `this.` is NOT good to have when using react hooks and refactoring from React.Components
+function User({username}) {
+  const {logout} = useContext(GitHubContext);
+  const [filter, setFilter] = useState('');
+  return (
+    <Query
+      query={userQuery}
+      variables={{username}}
+      normalize={normalizeUserData}
+    >
+      {({fetching, data, error}) =>
+        error ? (
+          <IsolatedContainer>
+            <p>There was an error loading the data</p>
+            <pre>{JSON.stringify(error, null, 2)}</pre>
+          </IsolatedContainer>
+        ) : fetching ? (
+          <LoadingMessagePage>Loading data for {username}</LoadingMessagePage>
+        ) : data ? (
+          <UserContext.Provider value={data}>
+            <Container>
+              <Row>
+                <Column width="3">
+                  <Profile />
+                  <PrimaryButton
+                    css={{marginTop: 20, width: '100%'}}
+                    onClick={logout}
+                  >
+                    Logout
+                  </PrimaryButton>
+                  <ButtonLink css={{marginTop: 20, width: '100%'}} to="/">
+                    Try another
+                  </ButtonLink>
+                </Column>
+                <Column width="9">
+                  <Text size="subheading">Repositories</Text>
+                  <RepoFilter filter={filter} onUpdate={setFilter} />
+                  <RepoList filter={filter} />
+                </Column>
+              </Row>
+            </Container>
+          </UserContext.Provider>
+        ) : (
+          <IsolatedContainer>I have no idea what's up...</IsolatedContainer>
+        )
+      }
+    </Query>
+  );
 }
 
-export default User
+User.propTypes = {
+  username: PropTypes.string,
+};
+
+export default User;
 
 /*
 eslint
