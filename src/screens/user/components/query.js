@@ -53,7 +53,7 @@ function useDeepCompareEffect(callback, inputs) {
   const previousInputs = usePrevious(inputs);
 }
 
-function Query({query, variables, normalize = data => data, children}) {
+function useQuery({query, variables, normalize = data => data}) {
   const client = useContext(GitHub.Context);
   const [state, safeSetState] = useSafeSetState({
     loaded: false,
@@ -91,9 +91,11 @@ function Query({query, variables, normalize = data => data, children}) {
     [query, variables],
   );
 
-  const previousInputs = usePrevious([query, variables]);
-  return children(state); // state is var in closure
+  return state; // state is var in closure
 }
+
+// simple refactor so we can separate out Query and useQuery logic.
+const Query = ({children, ...props}) => children(useQuery(props));
 
 Query.propTypes = {
   query: PropTypes.string.isRequired,
@@ -103,3 +105,4 @@ Query.propTypes = {
 };
 
 export default Query;
+export {useQuery};
