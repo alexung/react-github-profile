@@ -27,6 +27,32 @@ function useSafeSetState(initialState) {
   return [state, safeSetState];
 }
 
+function usePrevious(value) {
+  // reference to previousInputs
+  const ref = useRef();
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref.current;
+}
+
+function useDeepCompareEffect(callback, inputs) {
+  // the callback below runs when component is mounted and whenever the 'query' or 'variable' change
+  // comparing previous inputs with new ones and, if they're changed, then run the query
+  // IMPORTANT: no second arg means that this effect is run on EVERY render.
+  // if the prevInputs and curInputs are different, it'll get the most current cleanupRef by setting it to the callback
+  // else, it'll just return the most current cleanupRef, even if it's not callback
+  const cleanupRef = useRef();
+  useEffect(() => {
+    if (!isEqual(previousInputs, inputs)) {
+      cleanupRef.current = callback();
+    }
+    return cleanupRef.current;
+  });
+  // strange that you have to declare it below useEffect() even if it's used inside useEffect(), but alas
+  const previousInputs = usePrevious(inputs);
+}
+
 function Query({query, variables, normalize = data => data, children}) {
   const client = useContext(GitHub.Context);
   const [state, safeSetState] = useSafeSetState({
@@ -37,39 +63,35 @@ function Query({query, variables, normalize = data => data, children}) {
   });
 
   // the callback below runs when component is mounted and whenever the 'query' or 'variable' change
-  useEffect(() => {
-    // comparing previous inputs with new ones and, if they're changed, then run the query
-    if (isEqual(previousInputs.current, [query, variables])) return;
+  useDeepCompareEffect(
+    () => {
+      safeSetState({fetching: true});
+      client
+        .request(query, variables)
+        .then(res =>
+          safeSetState({
+            data: normalize(res),
+            error: null,
+            loaded: true,
+            fetching: false,
+          }),
+        )
+        .catch(error =>
+          safeSetState({
+            error,
+            data: null,
+            loaded: false,
+            fetching: false,
+          }),
+        );
+      // ensured that effects are called every time by removing the [query, variables] as 2nd arg in useEffect
+      // below, the array is essentially componentDidUpdate.
+      // If either 'query' or 'variables' change, then we can run this effect
+    },
+    [query, variables],
+  );
 
-    safeSetState({fetching: true});
-    client
-      .request(query, variables)
-      .then(res =>
-        safeSetState({
-          data: normalize(res),
-          error: null,
-          loaded: true,
-          fetching: false,
-        }),
-      )
-      .catch(error =>
-        safeSetState({
-          error,
-          data: null,
-          loaded: false,
-          fetching: false,
-        }),
-      );
-    // ensured that effects are called every time by removing the [query, variables] as 2nd arg in useEffect
-    // below, the array is essentially componentDidUpdate.
-    // If either 'query' or 'variables' change, then we can run this effect
-  });
-
-  // reference to previousInputs
-  const previousInputs = useRef();
-  useEffect(() => {
-    previousInputs.current = [query, variables];
-  });
+  const previousInputs = usePrevious([query, variables]);
   return children(state); // state is var in closure
 }
 
