@@ -1,16 +1,21 @@
 /* @jsx jsx */
-import {jsx} from '@emotion/core'
+import {jsx} from '@emotion/core';
 
-import {navigate} from '@reach/router'
-import {Input, PrimaryButton, IsolatedContainer} from '../../shared/pattern'
+import {useEffect} from 'react';
+import {navigate} from '@reach/router';
+import {Input, PrimaryButton, IsolatedContainer} from '../../shared/pattern';
 
 function handleSubmit(e) {
-  e.preventDefault()
-  const username = e.target.elements.username.value.trim()
-  navigate(`/${username}`)
+  e.preventDefault();
+  const username = e.target.elements.username.value.trim();
+  navigate(`/${username}`);
 }
 
 function Home() {
+  useEffect(() => {
+    // preload the next page
+    import('../user');
+  }, []); // only run on component mount
   return (
     <IsolatedContainer>
       <form
@@ -45,10 +50,10 @@ function Home() {
         </PrimaryButton>
       </form>
     </IsolatedContainer>
-  )
+  );
 }
 
-export default Home
+export default Home;
 
 /*
 eslint
